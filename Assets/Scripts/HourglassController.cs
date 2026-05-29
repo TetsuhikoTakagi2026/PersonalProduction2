@@ -27,12 +27,12 @@ public class HourglassController : MonoBehaviour
 
     [Header("見た目")]
     [SerializeField] Material frameMaterial;
-    [SerializeField] float frameOuterWidth = 0.18f;
+    [SerializeField] float frameOuterWidth = 0.12f;
     [SerializeField] float frameInnerWidth = 0.05f;
 
     // ────── ライフサイクル ──────
 
-    void Awake() => BuildAll();
+    void OnEnable() => BuildAll();
 
 #if UNITY_EDITOR
     void OnValidate()
@@ -151,7 +151,7 @@ public class HourglassController : MonoBehaviour
             new( hw, -hh, 0), new(-hw, -hh, 0),
             new(-hw,  hh, 0),   // 閉じる
         };
-        AddFrameLine("FrameRect", rect, frameOuterWidth, new Color(0.50f, 0.78f, 1.0f, 0.55f), 10);
+        AddFrameLine("FrameRect", rect, frameOuterWidth, new Color(0.40f, 0.65f, 0.90f, 0.70f), 10);
         AddFrameLine("FrameRectHL", rect, frameInnerWidth, new Color(0.95f, 0.98f, 1.0f, 0.85f), 11);
 
         // 左バッフル（上半）
@@ -171,7 +171,7 @@ public class HourglassController : MonoBehaviour
             pts[i] = new Vector3(poly[i].x, poly[i].y, 0f);
         pts[poly.Length] = pts[0];
 
-        AddFrameLine(goName, pts, frameOuterWidth, new Color(0.50f, 0.78f, 1.0f, 0.55f), 10);
+        AddFrameLine(goName, pts, frameOuterWidth, new Color(0.40f, 0.65f, 0.90f, 0.70f), 10);
         AddFrameLine(goName + "_HL", pts, frameInnerWidth, new Color(0.95f, 0.98f, 1.0f, 0.85f), 11);
     }
 
