@@ -8,20 +8,42 @@ using UnityEngine;
 public class HourglassController : MonoBehaviour
 {
     [Header("形状パラメータ")]
-    [SerializeField] float totalHeight  = 6f;
-    [SerializeField] float bulbWidth    = 1.8f;
-    [SerializeField] float neckWidth    = 0.36f;
-    [SerializeField] float neckHeight   = 0.5f;
+    [SerializeField] float totalHeight = 6f;
+    [SerializeField] float bulbWidth = 1.8f;
+    [SerializeField] float neckWidth = 0.36f;
+    [SerializeField] float neckHeight = 0.5f;
     [SerializeField] PhysicsMaterial2D wallMaterial;
 
     [Header("見た目")]
     [SerializeField] Material frameMaterial;
-    [SerializeField] float    frameWidth = 0.08f;
+    [SerializeField] float frameWidth = 0.08f;
 
     void Awake()
     {
         BuildColliders();
         BuildVisualFrame();
+        PushShaderParams();
+    }
+
+    /// <summary>
+    /// 砂時計の形状パラメータを MetaballCompose シェーダーへグローバル変数として渡す。
+    /// シェーダー内でクリッピングマスクとして使用される。
+    /// </summary>
+    void PushShaderParams()
+    {
+        float h = totalHeight / 2f;
+        float bw = bulbWidth / 2f;
+        float nw = neckWidth / 2f;
+        float nh = neckHeight / 2f;
+
+        Shader.SetGlobalFloat("_HalfH", h);
+        Shader.SetGlobalFloat("_HalfBW", bw);
+        Shader.SetGlobalFloat("_HalfNW", nw);
+        Shader.SetGlobalFloat("_HalfNH", nh);
+
+        // カメラの orthographicSize を取得（Main Camera が初期化されていなければ 5 を使用）
+        var cam = Camera.main;
+        Shader.SetGlobalFloat("_OrthoSize", cam != null ? cam.orthographicSize : 5f);
     }
 
     void BuildColliders()
@@ -30,10 +52,10 @@ public class HourglassController : MonoBehaviour
         for (int i = transform.childCount - 1; i >= 0; i--)
             Destroy(transform.GetChild(i).gameObject);
 
-        float h  = totalHeight / 2f;
-        float bw = bulbWidth   / 2f;
-        float nw = neckWidth   / 2f;
-        float nh = neckHeight  / 2f;
+        float h = totalHeight / 2f;
+        float bw = bulbWidth / 2f;
+        float nw = neckWidth / 2f;
+        float nh = neckHeight / 2f;
 
         // 左壁（上 → くびれ → 下）
         AddEdge(new[]
@@ -64,7 +86,7 @@ public class HourglassController : MonoBehaviour
 
     void AddEdge(Vector2[] pts, string wallName)
     {
-        var go  = new GameObject(wallName);
+        var go = new GameObject(wallName);
         go.transform.SetParent(transform, false);
         var col = go.AddComponent<EdgeCollider2D>();
         col.SetPoints(new List<Vector2>(pts));
@@ -73,10 +95,10 @@ public class HourglassController : MonoBehaviour
 
     void BuildVisualFrame()
     {
-        float h  = totalHeight / 2f;
-        float bw = bulbWidth   / 2f;
-        float nw = neckWidth   / 2f;
-        float nh = neckHeight  / 2f;
+        float h = totalHeight / 2f;
+        float bw = bulbWidth / 2f;
+        float nw = neckWidth / 2f;
+        float nh = neckHeight / 2f;
 
         // 砂時計の輪郭を一周するパス
         Vector3[] pts =
@@ -95,26 +117,42 @@ public class HourglassController : MonoBehaviour
         };
 
         var lr = gameObject.AddComponent<LineRenderer>();
-        lr.useWorldSpace  = false;
-        lr.loop           = false;
-        lr.positionCount  = pts.Length;
+        lr.useWorldSpace = false;
+        lr.loop = false;
+        lr.positionCount = pts.Length;
         lr.SetPositions(pts);
-        lr.startWidth     = frameWidth;
-        lr.endWidth       = frameWidth;
-        lr.sortingOrder   = 10;   // 液体より手前に描画
+        lr.startWidth = frameWidth;
+        lr.endWidth = frameWidth;
+        lr.sortingOrder = 10;   // 液体より手前に描画
 
         if (frameMaterial != null)
+        {
             lr.material = frameMaterial;
+        }
+        else
+        {
+            // frameMaterial 未設定時のガラス風フォールバック
+            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+            {
+                var mat = new Material(shader);
+                mat.SetColor("_BaseColor", new Color(0.65f, 0.92f, 1.0f, 0.55f));
+                mat.SetColor("_Color", new Color(0.65f, 0.92f, 1.0f, 0.55f));
+                mat.renderQueue = 3000;
+                lr.material = mat;
+            }
+        }
     }
 
     // ────── Gizmo ──────
     void OnDrawGizmos()
     {
         Gizmos.color = new Color(1f, 0.9f, 0.2f, 0.9f);
-        float h  = totalHeight / 2f;
-        float bw = bulbWidth   / 2f;
-        float nw = neckWidth   / 2f;
-        float nh = neckHeight  / 2f;
+        float h = totalHeight / 2f;
+        float bw = bulbWidth / 2f;
+        float nw = neckWidth / 2f;
+        float nh = neckHeight / 2f;
         Vector3 o = transform.position;
 
         Vector3[] pts =

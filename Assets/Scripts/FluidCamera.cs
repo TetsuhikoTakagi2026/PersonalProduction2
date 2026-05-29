@@ -25,22 +25,57 @@ public class FluidCamera : MonoBehaviour
 
     Camera        _cam;
     RenderTexture _rt;
+    bool          _rtOwned; // 自分で生成した RT か（OnDestroy で解放する対象）
 
     void Awake()
     {
         _cam = GetComponent<Camera>();
 
-        _rt = new RenderTexture(renderWidth, renderHeight, 16, RenderTextureFormat.Default)
+        // Inspector で既に targetTexture が割り当てられていれば再利用、
+        // なければ実行時に新規生成する。
+        if (_cam.targetTexture != null)
         {
-            filterMode = FilterMode.Bilinear
-        };
-        _cam.targetTexture = _rt;
+            _rt      = _cam.targetTexture;
+            _rtOwned = false;
+            Debug.Log("[FluidCamera] 既存の targetTexture を使用: " + _rt.name);
+        }
+        else
+        {
+            _rt = new RenderTexture(renderWidth, renderHeight, 16, RenderTextureFormat.ARGB32)
+            {
+                filterMode = FilterMode.Bilinear,
+                name       = "FluidRT_Runtime"
+            };
+            _rt.Create();
+            _cam.targetTexture = _rt;
+            _rtOwned           = true;
+            Debug.Log("[FluidCamera] 新しい RenderTexture を生成しました。");
+        }
 
-        if (composeMaterial == null || fluidRawImage == null) return;
+        // ★ ここが重要：GPU メモリが未初期化だとゴミデータ（≠ 黒）が
+        //   MetaballCompose に渡り画面が真っ青になる。必ず明示クリアする。
+        var prevRT = RenderTexture.active;
+        RenderTexture.active = _rt;
+        GL.Clear(true, true, Color.clear);
+        RenderTexture.active = prevRT;
 
-        var mat = Instantiate(composeMaterial);
-        mat.SetTexture("_FluidTex", _rt);
-        fluidRawImage.material = mat;
+        if (fluidRawImage == null)
+        {
+            Debug.LogWarning("[FluidCamera] Fluid Raw Image が未設定です。");
+            return;
+        }
+
+        if (composeMaterial != null)
+        {
+            var mat = Instantiate(composeMaterial);
+            mat.SetTexture("_FluidTex", _rt);
+            fluidRawImage.material = mat;
+            Debug.Log("[FluidCamera] MetaballComposeMat に FluidRT を設定しました。");
+        }
+        else
+        {
+            fluidRawImage.texture = _rt;
+        }
     }
 
     void LateUpdate()
@@ -54,6 +89,6 @@ public class FluidCamera : MonoBehaviour
 
     void OnDestroy()
     {
-        if (_rt != null) _rt.Release();
+        if (_rtOwned && _rt != null) _rt.Release();
     }
 }
